@@ -3,7 +3,6 @@
 # file: british_suntimes.rb
 
 
-require 'dynarex'
 require 'geocoder'
 require 'chronic_cron'
 require 'solareventcalculator'
