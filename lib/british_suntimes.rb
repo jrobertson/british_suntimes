@@ -8,6 +8,9 @@ require 'geocoder'
 require 'chronic_cron'
 require 'solareventcalculator'
 
+require 'subunit'
+require 'human_speakable'
+
 
 
 class BritishSuntimes
@@ -18,7 +21,7 @@ class BritishSuntimes
   def initialize(year=Date.today.year.to_s, location: 'edinburgh', 
                  debug: false)
     
-    @debug = debug
+    @location, @debug = location, debug
 
     a = (Date.parse(year + ' Jan')...Date.parse(year.succ + ' Jan')).to_a
     g = Geocoder.search(location)
@@ -87,6 +90,33 @@ class BritishSuntimes
     dx
   end  
 
+end
+
+class BritishSuntimesAgent < BritishSuntimes
+  using HumanSpeakable
+  using Ordinals  
+
+  
+  def longest_day()
+        
+    d = super()
+    days = (Date.parse(d) - Date.today).to_i
+    sunrise, sunset = to_dx().to_h[d]
+
+    t1 = Time.parse(d + ' ' + sunrise)
+    t2 = Time.parse(d + ' ' + sunset)
+
+    su = Subunit.new(units={minutes:60, hours:60}, seconds: (t2 - t1).to_i)
+    duration = su.to_s omit: [:seconds]
+
+    d2 = Date.parse(d)
+    day = d2.strftime("#{d2.day.ordinal} %B")
+
+    s = d2.humanize
+    msg =  s[0].upcase + s[1..-1] + " (%s), is the longest day of the year when #%s will enjoy %s of sunshine. The sun will rise at %sam and set at %spm." % [day, @location, duration, t1.strftime("%-I:%M"), t2.strftime("%-I:%M")]
+        
+  end
+  
 end
 
 
