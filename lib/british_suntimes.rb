@@ -12,14 +12,18 @@ require 'solareventcalculator'
 
 class BritishSuntimes
 
-  attr_reader :to_h, :bst_start, :bst_end, :to_dx
+  attr_reader :to_h, :bst_start, :bst_end, :to_dx, :longest_day, :shortest_day
 
 
-  def initialize(year=Date.today.year.to_s, location: 'edinburgh')
+  def initialize(year=Date.today.year.to_s, location: 'edinburgh', 
+                 debug: false)
+    
+    @debug = debug
 
     a = (Date.parse(year + ' Jan')...Date.parse(year.succ + ' Jan')).to_a
     g = Geocoder.search(location)
 
+    puts 'finding the times ...' if @debug
     times = a.inject({}) do |r, date|
 
       calc = SolarEventCalculator.new(date, *g[0].coordinates)
@@ -47,7 +51,8 @@ class BritishSuntimes
     end
 
     @year, @location, @to_h = year, location, times
-    @to_dx = build_dx()
+    puts 'buklding @to_dx' if @debug
+    @to_dx = build_dx()    
     
   end
   
@@ -62,14 +67,22 @@ class BritishSuntimes
   def build_dx()
 
     dx = Dynarex.new 'times[title, tags, desc, bst_start, ' + 
-        'bst_end]/day(date, sunrise, sunset)'
+        'bst_end, longest_day, shortest_day]/day(date, sunrise, sunset)'
     dx.title = @location + " sunrise sunset times " + @year
     dx.tags = @location + " times sunrise sunset %s" % [@year]
     dx.delimiter = ' # '
     dx.bst_start, dx.bst_end = @bst_start.to_s, @bst_end.to_s
     dx.desc = 'Adjusted for British summertime'
 
-    @to_h.each {|k,v| dx.create date: k, sunrise: v[0], sunset: v[1] }     
+    @to_h.each {|k,v| dx.create date: k, sunrise: v[0], sunset: v[1] }
+    
+    a = dx.all.map do |x| 
+      Time.parse(x.date + ' ' + x.sunset) - Time.parse(x.date + ' ' + x.sunrise)
+    end
+
+    shortest, longest = a.minmax.map {|x| dx.all[a.index(x)]}    
+    @longest_day = dx.longest_day = longest.date
+    @shortest_day = dx.shortest_day = shortest.date
     
     dx
   end  
