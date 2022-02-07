@@ -18,9 +18,9 @@ class BritishSuntimes
   attr_reader :to_h, :bst_start, :bst_end, :to_dx, :longest_day, :shortest_day
 
 
-  def initialize(year=Date.today.year.to_s, location: 'edinburgh', 
+  def initialize(year=Date.today.year.to_s, location: 'edinburgh',
                  debug: false)
-    
+
     @location, @debug = location, debug
 
     a = (Date.parse(year + ' Jan')...Date.parse(year.succ + ' Jan')).to_a
@@ -41,9 +41,9 @@ class BritishSuntimes
 
     # alter the times for British summertime
 
-    @bst_start = ChronicCron.new('last sunday in March at 1am', 
+    @bst_start = ChronicCron.new('last sunday in March at 1am',
           Time.local(year)).to_date
-    @bst_end = ChronicCron.new('last sunday in October at 2am', 
+    @bst_end = ChronicCron.new('last sunday in October at 2am',
           Time.local(year)).to_date
 
 
@@ -55,21 +55,21 @@ class BritishSuntimes
 
     @year, @location, @to_h = year, location, times
     puts 'buklding @to_dx' if @debug
-    @to_dx = build_dx()    
-    
+    @to_dx = build_dx()
+
   end
-  
+
   # exports the sun times to a raw Dynarex file
   #
   def export(filename=@location + "-suntimes-#{@year}.txt")
     File.write filename, @to_dx.to_s
-  end  
-  
+  end
+
   private
-  
+
   def build_dx()
 
-    dx = Dynarex.new 'times[title, tags, desc, bst_start, ' + 
+    dx = Dynarex.new 'times[title, tags, desc, bst_start, ' +
         'bst_end, longest_day, shortest_day]/day(date, sunrise, sunset)'
     dx.title = @location + " sunrise sunset times " + @year
     dx.tags = @location + " times sunrise sunset %s" % [@year]
@@ -77,28 +77,28 @@ class BritishSuntimes
     dx.bst_start, dx.bst_end = @bst_start.to_s, @bst_end.to_s
     dx.desc = 'Adjusted for British summertime'
 
-    @to_h.each {|k,v| dx.create date: k, sunrise: v[0], sunset: v[1] }
-    
-    a = dx.all.map do |x| 
+    @to_h.each {|k,v| dx.create({date: k, sunrise: v[0], sunset: v[1]}) }
+
+    a = dx.all.map do |x|
       Time.parse(x.date + ' ' + x.sunset) - Time.parse(x.date + ' ' + x.sunrise)
     end
 
-    shortest, longest = a.minmax.map {|x| dx.all[a.index(x)]}    
+    shortest, longest = a.minmax.map {|x| dx.all[a.index(x)]}
     @longest_day = dx.longest_day = longest.date
     @shortest_day = dx.shortest_day = shortest.date
-    
+
     dx
-  end  
+  end
 
 end
 
 class BritishSuntimesAgent < BritishSuntimes
   using HumanSpeakable
-  using Ordinals  
+  using Ordinals
 
-  
+
   def longest_day()
-        
+
     d = super()
     days = (Date.parse(d) - Date.today).to_i
     sunrise, sunset = to_dx().to_h[d]
@@ -113,10 +113,13 @@ class BritishSuntimesAgent < BritishSuntimes
     day = d2.strftime("#{d2.day.ordinal} %B")
 
     s = d2.humanize
-    msg =  s[0].upcase + s[1..-1] + " (%s), is the longest day of the year when #%s will enjoy %s of sunshine. The sun will rise at %sam and set at %spm." % [day, @location, duration, t1.strftime("%-I:%M"), t2.strftime("%-I:%M")]
-        
+    msg =  s[0].upcase + s[1..-1] + ", the longest day of the year, #%s \
+will enjoy %s of sunshine. The sun will rise at %sam \
+and set at %spm." % [@location, duration, t1.strftime("%-I:%M"), \
+                             t2.strftime("%-I:%M")]
+
   end
-  
+
 end
 
 
